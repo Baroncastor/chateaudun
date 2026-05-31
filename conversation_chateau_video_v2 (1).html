@@ -1,0 +1,317 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  #stage {
+    background: linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    border-radius: var(--border-radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    height: 560px;
+  }
+
+  #header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+  #header .avatar-group { display: flex; }
+  #header .av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: #fff; margin-left: -6px; border: 1.5px solid #1a1a2e; }
+  #header .title { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9); }
+  #header .subtitle { font-size: 11px; color: rgba(255,255,255,0.45); }
+
+  #messages {
+    flex: 1;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+  .msg { display: flex; align-items: flex-end; gap: 8px; opacity: 0; transform: translateY(10px); transition: opacity 0.4s, transform 0.4s; max-width: 78%; }
+  .msg.show { opacity: 1; transform: translateY(0); }
+  .msg.right { flex-direction: row-reverse; align-self: flex-end; }
+  .msg.left { align-self: flex-start; }
+
+  .av-sm { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; color: #fff; flex-shrink: 0; }
+
+  .bubble { padding: 8px 12px; border-radius: 14px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+  .right .bubble { border-bottom-right-radius: 4px; }
+  .left .bubble { border-bottom-left-radius: 4px; }
+
+  .sender-label { font-size: 10px; font-weight: 500; margin-bottom: 3px; color: rgba(255,255,255,0.5); }
+  .msg.right .sender-label { text-align: right; }
+
+  .msg-wrap { display: flex; flex-direction: column; }
+  .msg.right .msg-wrap { align-items: flex-end; }
+  .msg.left .msg-wrap { align-items: flex-start; }
+
+  #progress-bar { height: 3px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+  #progress-fill { height: 100%; background: linear-gradient(90deg, #5DCAA5, #7F77DD); width: 0%; transition: width 0.3s linear; }
+
+  #controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 18px;
+    background: rgba(0,0,0,0.3);
+    flex-shrink: 0;
+  }
+  #controls button {
+    background: rgba(255,255,255,0.1);
+    border: 0.5px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.85);
+    padding: 6px 14px;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    transition: background 0.2s;
+  }
+  #controls button:hover { background: rgba(255,255,255,0.2); }
+  #msg-counter { font-size: 11px; color: rgba(255,255,255,0.4); margin-left: auto; }
+
+  #typing-row { display: flex; align-items: center; gap: 8px; min-height: 30px; flex-shrink: 0; padding: 0 16px 10px; }
+  .typing-indicator { display: none; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 14px; border-bottom-left-radius: 4px; }
+  .typing-indicator span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.55); animation: bounce 0.9s infinite; }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-4px)} }
+  #typing-name { font-size: 10px; color: rgba(255,255,255,0.4); }
+
+  .image-bubble { width: 160px; height: 96px; border-radius: 10px; background: linear-gradient(135deg, #1D9E75 0%, #378ADD 60%, #7F77DD 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(255,255,255,0.9); font-size: 11px; gap: 4px; border: 0.5px solid rgba(255,255,255,0.15); }
+  .image-bubble .icon { font-size: 26px; }
+</style>
+
+<div id="stage">
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="header">
+    <div class="avatar-group" id="av-group"></div>
+    <div>
+      <div class="title">Voyage scolaire — Châteaudun <i class="ti ti-castle" style="font-size:13px;vertical-align:-1px" aria-hidden="true"></i></div>
+      <div class="subtitle">6 participants</div>
+    </div>
+  </div>
+  <div id="messages"></div>
+  <div id="typing-row">
+    <div class="typing-indicator" id="typing"><span></span><span></span><span></span></div>
+    <div id="typing-name"></div>
+  </div>
+  <div id="controls">
+    <button id="btn-play"><i class="ti ti-player-play" aria-hidden="true"></i> Lecture</button>
+    <button id="btn-restart"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+    <span id="msg-counter">0 / 0</span>
+  </div>
+</div>
+
+<script>
+const users = {
+  Marie:   { color: '#D4537E', bg: '#993556', initials: 'MA' },
+  Max:     { color: '#378ADD', bg: '#185FA5', initials: 'MX' },
+  Juliane: { color: '#1D9E75', bg: '#0F6E56', initials: 'JU' },
+  Léa:     { color: '#EF9F27', bg: '#BA7517', initials: 'LÉ' },
+  Jules:   { color: '#7F77DD', bg: '#534AB7', initials: 'JS' },
+  Mélanie: { color: '#D85A30', bg: '#993C1D', initials: 'MÉ' },
+};
+
+const ME = 'Max';
+
+const messages = [
+  {from:'Marie',  text:'Cc tout le monde !'},
+  {from:'Max',    text:'Salut ! Comment s\'est passé votre voyage scolaire ?'},
+  {from:'Juliane',text:'C\'était super. On a visité plein de châteaux.'},
+  {from:'Max',    text:'C\'est lequel votre préféré ???'},
+  {from:'Léa',    text:'Moi j\'ai bien aimé le château de Châteaudun. Je pense que c\'était celui que tout le monde a adoré.'},
+  {from:'Jules',  text:'Il est comment ???'},
+  {from:'Marie',  text:'Il est grand, très beau et très intéressant. L\'architecture mélange gothique et Renaissance.'},
+  {from:'Léa',    text:'Il y a même des escargots gravés sur les murs et des fossiles dans les escaliers !'},
+  {from:'Juliane',text:'On a commencé par le donjon du XIIe siècle.'},
+  {from:'Max',    text:'Le donjon se visite jusqu\'en haut ?'},
+  {from:'Léa',    text:'Malheureusement non.'},
+  {from:'Jules',  text:'C\'est dommage.'},
+  {from:'Max',    text:'Comment sont les salles ?'},
+  {from:'Marie',  text:'Quelques-unes reconstituées, surtout dans l\'aile Renaissance. On a vu une grande salle avec une cheminée sculptée, des tapisseries et des coffres anciens.'},
+  {from:'Jules',  text:'Des anecdotes historiques marrantes ? Des histoires de rois ou de guerres ?'},
+  {from:'Léa',    text:'La guide a parlé de Jean de Dunois, le « Bâtard d\'Orléans », compagnon de Jeanne d\'Arc, qui a fait transformer le château. Et il y a eu des remaniements aux XVe–XVIe siècles.'},
+  {from:'Mélanie',text:'Cc !'},
+  {from:'Max',    text:'Salut Mélanie. Vous êtes passés par la chapelle ? J\'ai entendu dire qu\'elle est belle.'},
+  {from:'Juliane',text:'Oui, elle est très lumineuse avec de jolies voûtes.'},
+  {from:'Jules',  text:'Y a-t-il un village à côté ?'},
+  {from:'Léa',    text:'Oui. Il y avait plein de magasins. On a pas pu y aller mais je sais qu\'il y a une boulangerie avec des chocolatines incroyablement bonnes. Je dois y aller. À demain.'},
+  {from:'Marie',  text:'Bisous.'},
+  {from:'Jules',  text:'Comment est la vue depuis le haut du château ?'},
+  {from:'Mélanie',text:'Magnifique ! Regardez :', image: true},
+  {from:'Max',    text:'Wahou, c\'est trop beau !!!!!!!'},
+  {from:'Jules',  text:'Vous avez pu voir les jardins ou c\'est surtout minéral ?'},
+  {from:'Marie',  text:'Plutôt terrasses et cours, mais il y a des espaces verts autour et la vue sur la vallée compense largement.'},
+  {from:'Max',    text:'Tu recommandes pour une sortie en famille ?'},
+  {from:'Mélanie',text:'Carrément. La visite n\'est pas trop longue en plus.'},
+  {from:'Jules',  text:'Cool. Dernière question : c\'est quoi la meilleure partie pour vous ?'},
+  {from:'Marie',  text:'Le donjon et la vue.'},
+  {from:'Jules',  text:'Vous m\'avez vraiment donné envie d\'y aller. Je vais en parler à mes parents.'},
+];
+
+const SPEED = 1800;
+const TYPING_DELAY = 750;
+
+const avGroup = document.getElementById('av-group');
+Object.entries(users).forEach(([name, u]) => {
+  const av = document.createElement('div');
+  av.className = 'av';
+  av.style.background = u.bg;
+  av.textContent = u.initials;
+  av.title = name;
+  avGroup.appendChild(av);
+});
+
+const messagesEl = document.getElementById('messages');
+const typingEl = document.getElementById('typing');
+const typingNameEl = document.getElementById('typing-name');
+const progressFill = document.getElementById('progress-fill');
+const counter = document.getElementById('msg-counter');
+const btnPlay = document.getElementById('btn-play');
+const btnRestart = document.getElementById('btn-restart');
+
+counter.textContent = `0 / ${messages.length}`;
+
+let current = 0;
+let timer = null;
+let playing = false;
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+function createMessageEl(msg) {
+  const u = users[msg.from];
+  const isMe = msg.from === ME;
+
+  const row = document.createElement('div');
+  row.className = `msg ${isMe ? 'right' : 'left'}`;
+
+  const avEl = document.createElement('div');
+  avEl.className = 'av-sm';
+  avEl.style.background = u.bg;
+  avEl.textContent = u.initials;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+
+  const label = document.createElement('div');
+  label.className = 'sender-label';
+  label.style.color = u.color;
+  label.textContent = msg.from;
+
+  let content;
+  if (msg.image) {
+    content = document.createElement('div');
+    content.className = 'image-bubble';
+    content.innerHTML = `<i class="ti ti-photo icon" aria-hidden="true"></i><span>Vue du château</span>`;
+  } else {
+    content = document.createElement('div');
+    content.className = 'bubble';
+    if (isMe) {
+      content.style.background = 'rgba(55,138,221,0.25)';
+      content.style.border = '0.5px solid rgba(55,138,221,0.4)';
+      content.style.color = '#e8f2fc';
+    } else {
+      content.style.background = 'rgba(255,255,255,0.08)';
+      content.style.border = '0.5px solid rgba(255,255,255,0.12)';
+      content.style.color = 'rgba(255,255,255,0.88)';
+    }
+    content.textContent = msg.text;
+  }
+
+  wrap.appendChild(label);
+  wrap.appendChild(content);
+
+  if (isMe) { row.appendChild(wrap); row.appendChild(avEl); }
+  else { row.appendChild(avEl); row.appendChild(wrap); }
+
+  return row;
+}
+
+function showTyping(name) {
+  const u = users[name];
+  typingEl.style.display = 'flex';
+  typingEl.style.background = `rgba(${hexToRgb(u.bg)},0.3)`;
+  typingNameEl.textContent = `${name} écrit…`;
+  typingNameEl.style.color = u.color;
+}
+
+function hideTyping() {
+  typingEl.style.display = 'none';
+  typingNameEl.textContent = '';
+}
+
+function step() {
+  if (current >= messages.length) {
+    hideTyping();
+    playing = false;
+    btnPlay.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Terminé';
+    progressFill.style.width = '100%';
+    return;
+  }
+
+  const msg = messages[current];
+  showTyping(msg.from);
+
+  timer = setTimeout(() => {
+    hideTyping();
+
+    const el = createMessageEl(msg);
+    messagesEl.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    current++;
+    counter.textContent = `${current} / ${messages.length}`;
+    progressFill.style.width = `${(current / messages.length) * 100}%`;
+
+    if (playing) timer = setTimeout(step, SPEED);
+  }, TYPING_DELAY);
+}
+
+function play() {
+  if (playing) {
+    playing = false;
+    clearTimeout(timer);
+    hideTyping();
+    btnPlay.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i> Reprendre';
+  } else {
+    if (current >= messages.length) return;
+    playing = true;
+    btnPlay.innerHTML = '<i class="ti ti-player-pause" aria-hidden="true"></i> Pause';
+    step();
+  }
+}
+
+function restart() {
+  clearTimeout(timer);
+  playing = false;
+  current = 0;
+  messagesEl.innerHTML = '';
+  hideTyping();
+  progressFill.style.width = '0%';
+  counter.textContent = `0 / ${messages.length}`;
+  btnPlay.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i> Lecture';
+}
+
+btnPlay.addEventListener('click', play);
+btnRestart.addEventListener('click', restart);
+</script>
